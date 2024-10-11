@@ -113,6 +113,7 @@ export function FilterPillsList() {
       {!!query.filters.length && (
         <>
           <AppNavigationLink
+            title="Clear all filters"
             className=""
             search={(search) => ({
               ...search,
@@ -122,7 +123,7 @@ export function FilterPillsList() {
           >
             <XMarkIcon className="w-4 h-4" />
           </AppNavigationLink>
-          <div className="px-4">{'|'}</div>
+          <div className="ml-3 mr-4 border-l h-4"></div>
           {!segmentInFilters && (
             <button
               disabled={saveAs.isPending}
