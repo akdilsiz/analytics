@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react'
 import * as api from '../api'
 import { useQueryContext } from '../query-context'
+import { formatSegmentIdAsLabelKey, isSegmentFilter } from '../nav-menu/filter-menu'
 
 export const FILTER_MODAL_TO_FILTER_GROUP = {
   page: ['page', 'entry_page', 'exit_page'],
@@ -75,8 +76,12 @@ try {
 const ESCAPED_PIPE = '\\|'
 
 export function getLabel(labels, filterKey, value) {
-  if (['country', 'region', 'city', 'segment'].includes(filterKey)) {
+  if (['country', 'region', 'city'].includes(filterKey)) {
     return labels[value]
+  }
+
+  if (isSegmentFilter(['is', filterKey, []])) {
+    return labels[formatSegmentIdAsLabelKey(value)]
   }
 
   return value

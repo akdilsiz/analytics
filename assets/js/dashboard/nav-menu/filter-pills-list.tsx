@@ -67,7 +67,7 @@ export function FilterPillsList() {
           body: JSON.stringify(data),
           headers: { 'content-type': 'application/json' }
         }
-      )
+      ).then(res => res.json())
     },
     onSuccess: (_d, _id) => {
       navigate({
@@ -138,7 +138,7 @@ export function FilterPillsList() {
               {saveAs.isPending ? 'Saving...' : 'Save as'}
             </button>
           )}
-          {segmentInFilters && (
+          {segmentInFilters && segmentInFilters[2].length === 1 && (
             <button
               disabled={save.isPending}
               onClick={() =>
