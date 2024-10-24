@@ -27,7 +27,11 @@ export const SaveSegmentAction = () => {
   }, [])
 
   const createSegment = useMutation({
-    mutationFn: (data: {
+    mutationFn: ({
+      name,
+      personal,
+      segment_data
+    }: {
       name: string
       personal: boolean
       segment_data: {
@@ -39,7 +43,14 @@ export const SaveSegmentAction = () => {
         `/internal-api/${encodeURIComponent(site.domain)}/segments`,
         {
           method: 'POST',
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            name,
+            personal,
+            segment_data: {
+              filters: remapToApiFilters(segment_data.filters),
+              labels: cleanLabels(segment_data.filters, segment_data.labels)
+            }
+          }),
           headers: { 'content-type': 'application/json' }
         }
       ).then((res) => res.json())
@@ -87,8 +98,8 @@ export const SaveSegmentAction = () => {
               name,
               personal,
               segment_data: {
-                filters: remapToApiFilters(query.filters),
-                labels: cleanLabels(query.filters, query.labels)
+                filters: query.filters,
+                labels: query.labels
               }
             })
           }
