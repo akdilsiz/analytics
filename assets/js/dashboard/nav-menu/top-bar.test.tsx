@@ -68,7 +68,7 @@ test('user can open and close filters dropdown', async () => {
     )
   })
 
-  const toggleFilters = screen.getByRole('button', { name: 'Filter' })
+  const toggleFilters = screen.getByRole('button', { name: /Filter/ })
   await userEvent.click(toggleFilters)
   expect(screen.queryAllByRole('link').map((el) => el.textContent)).toEqual([
     'Page',
@@ -79,11 +79,10 @@ test('user can open and close filters dropdown', async () => {
     'Operating System',
     'UTM tags',
     'Goal',
-    'Hostname',
-    'Segment'
+    'Hostname'
   ])
   await userEvent.click(toggleFilters)
-  expect(screen.queryAllByRole('link')).toEqual([])
+  expect(screen.queryAllByRole('menuitem')).toEqual([])
 })
 
 test('current visitors renders when visitors are present and disappears after visitors are null', async () => {

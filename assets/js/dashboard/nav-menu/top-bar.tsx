@@ -26,7 +26,7 @@ export function TopBar({ showCurrentVisitors, extraBar }: TopBarProps) {
       <div id="stats-container-top" ref={ref} />
       <div
         className={classNames(
-          'relative top-0 sm:py-3 py-2 z-10',
+          'relative top-0 py-2 sm:py-3 z-10',
           !site.embedded &&
             !inView &&
             'sticky fullwidth-shadow bg-gray-50 dark:bg-gray-850'
@@ -46,9 +46,7 @@ export function TopBar({ showCurrentVisitors, extraBar }: TopBarProps) {
           </div>
           <QueryPeriodPicker />
         </div>
-        {!!extraBar && (
-          <div className="flex items-center w-full">{extraBar}</div>
-        )}
+        {!!extraBar && extraBar}
       </div>
     </>
   )

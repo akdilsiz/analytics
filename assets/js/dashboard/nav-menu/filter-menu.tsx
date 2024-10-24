@@ -171,8 +171,7 @@ export const FilterMenu = () => {
       }
     >
       {opened && (
-        <DropdownMenuWrapper id="filter-menu">
-          <SegmentsList />
+        <DropdownMenuWrapper id="filter-menu" className="md:left-auto md:w-56">
           <DropdownLinkGroup>
             {filterListItems.map(({ modalKey, label }) => (
               <DropdownNavigationLink

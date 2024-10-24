@@ -1,6 +1,6 @@
 /** @format */
 
-import React from 'react'
+import React, { DetailedHTMLProps, HTMLAttributes } from 'react'
 import { useQueryContext } from '../query-context'
 import { FilterPill } from './filter-pill'
 import {
@@ -8,155 +8,89 @@ import {
   EVENT_PROPS_PREFIX,
   FILTER_GROUP_TO_MODAL_TYPE,
   plainFilterText,
-  remapToApiFilters,
   styledFilterText
 } from '../util/filters'
-import {
-  AppNavigationLink,
-  useAppNavigate
-} from '../navigation/use-app-navigate'
-import { XMarkIcon } from '@heroicons/react/20/solid'
-import { useMutation } from '@tanstack/react-query'
-import { useSiteContext } from '../site-context'
-import { DashboardQuery } from '../query'
+import { useAppNavigate } from '../navigation/use-app-navigate'
+import classNames from 'classnames'
 
-export function FilterPillsList() {
-  const site = useSiteContext()
+export const PILL_X_GAP = 16
+export const PILL_Y_GAP = 8
+
+/** Restricts output to slice of DashboardQuery['filters'], or makes the output outside the slice invisible */
+type Slice = {
+  /** The beginning index of the specified portion of the array. If start is undefined, then the slice begins at index 0. */
+  start?: number
+  /** The end index of the specified portion of the array. This is exclusive of the element at the index 'end'. If end is undefined, then the slice extends to the end of the array. */
+  end?: number
+  /** Determines if it renders the elements outside the slice with invisible or doesn't render the elements at all */
+  type: 'hide-outside' | 'no-render-outside'
+}
+
+type FilterPillsProps = {
+  direction: 'horizontal' | 'vertical'
+  slice?: Slice
+} & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>
+
+export const FilterPillsList = React.forwardRef<
+  HTMLDivElement,
+  FilterPillsProps
+>(({ className, style, slice, direction }, ref) => {
   const { query } = useQueryContext()
   const navigate = useAppNavigate()
 
-  const saveAs = useMutation({
-    mutationFn: (data: {
-      name: string
-      personal: boolean
-      segment_data: { filters: DashboardQuery['filters'] }
-    }) => {
-      return fetch(
-        `/internal-api/${encodeURIComponent(site.domain)}/segments`,
-        {
-          method: 'POST',
-          body: JSON.stringify(data),
-          headers: { 'content-type': 'application/json' }
-        }
-      ).then((res) => res.json())
-    },
-    onSuccess: async (d) => {
-      navigate({
-        search: (search) => ({
-          ...search,
-          filters: [['is', 'segment', [d.id]]],
-          labels: { [d.id]: [d.name] }
-        })
-      })
-    }
-  })
-  const save = useMutation({
-    mutationFn: ({
-      id,
-      ...data
-    }: {
-      id: number
-      name?: string
-      personal?: boolean
-      segment_data: { filters: DashboardQuery['filters'] }
-    }) => {
-      return fetch(
-        `/internal-api/${encodeURIComponent(site.domain)}/segments/${id}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-          headers: { 'content-type': 'application/json' }
-        }
-      ).then(res => res.json())
-    },
-    onSuccess: (_d, _id) => {
-      navigate({
-        search: (search) => ({
-          ...search,
-          filters: query.filters.filter((f) => f[1] === 'segment')
-        })
-      })
-    }
-  })
+  const renderableFilters =
+    slice?.type === 'no-render-outside'
+      ? query.filters.slice(slice.start, slice.end)
+      : query.filters
 
-  const segmentInFilters = query.filters.find((f) => f[1] === 'segment')
+  const indexAdjustment =
+    slice?.type === 'no-render-outside' ? (slice.start ?? 0) : 0
+
+  const isInvisible = (index: number) => {
+    return slice?.type === 'hide-outside'
+      ? index < (slice.start ?? 0) ||
+          index > (slice.end ?? query.filters.length) - 1
+      : false
+  }
 
   return (
-    <div className="flex items-center">
-      <div
-        id="filters"
-        className="flex flex-wrap rounded border-2 border-transparent"
-      >
-        {query.filters.map((filter, index) => (
-          <FilterPill
-            modalToOpen={
-              FILTER_GROUP_TO_MODAL_TYPE[
-                filter[1].startsWith(EVENT_PROPS_PREFIX) ? 'props' : filter[1]
-              ]
-            }
-            plainText={plainFilterText(query, filter)}
-            key={index}
-            onRemoveClick={() =>
-              navigate({
-                search: (search) => ({
-                  ...search,
-                  filters: query.filters.filter((_, i) => i !== index),
-                  labels: cleanLabels(query.filters, query.labels)
-                })
-              })
-            }
-          >
-            {styledFilterText(query, filter)}
-          </FilterPill>
-        ))}
-      </div>
-      {!!query.filters.length && (
-        <>
-          <AppNavigationLink
-            title="Clear all filters"
-            className=""
-            search={(search) => ({
-              ...search,
-              filters: null,
-              labels: null
-            })}
-          >
-            <XMarkIcon className="w-4 h-4" />
-          </AppNavigationLink>
-          <div className="ml-3 mr-4 border-l h-4"></div>
-          {!segmentInFilters && (
-            <button
-              disabled={saveAs.isPending}
-              onClick={() =>
-                saveAs.mutate({
-                  name: String(Math.random() * 10000),
-                  personal: true,
-                  segment_data: { filters: remapToApiFilters(query.filters) }
-                })
-              }
-            >
-              {saveAs.isPending ? 'Saving...' : 'Save as'}
-            </button>
-          )}
-          {segmentInFilters && segmentInFilters[2].length === 1 && (
-            <button
-              disabled={save.isPending}
-              onClick={() =>
-                save.mutate({
-                  id: segmentInFilters[2][0] as number,
-                  segment_data: {
-                    filters: remapToApiFilters(
-                      query.filters.filter((f) => f[1] !== 'segment')
-                    )
-                  }
-                })
-              }
-            >
-              {save.isPending ? 'Saving...' : 'Save'}
-            </button>
-          )}
-        </>
+    <div
+      ref={ref}
+      className={classNames(
+        'flex',
+        {
+          'flex-row': direction === 'horizontal',
+          'flex-col items-start': direction === 'vertical'
+        },
+        className
       )}
+      style={{ columnGap: PILL_X_GAP, rowGap: PILL_Y_GAP, ...style }}
+    >
+      {renderableFilters.map((filter, index) => (
+        <FilterPill
+          className={classNames(isInvisible(index) && 'invisible')}
+          modalToOpen={
+            FILTER_GROUP_TO_MODAL_TYPE[
+              filter[1].startsWith(EVENT_PROPS_PREFIX) ? 'props' : filter[1]
+            ]
+          }
+          plainText={plainFilterText(query, filter)}
+          key={index}
+          onRemoveClick={() =>
+            navigate({
+              search: (search) => ({
+                ...search,
+                filters: query.filters.filter(
+                  (_, i) => i !== index + indexAdjustment
+                ),
+                labels: cleanLabels(query.filters, query.labels)
+              })
+            })
+          }
+        >
+          {styledFilterText(query, filter)}
+        </FilterPill>
+      ))}
     </div>
   )
-}
+})

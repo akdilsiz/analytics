@@ -41,9 +41,9 @@ defmodule Plausible.Stats.QueryRunner do
 
     run_results =
       %__MODULE__{query: optimized_query, site: site}
+      |> execute_main_query()
       |> add_comparison_query()
       |> execute_comparison()
-      |> execute_main_query()
       |> add_meta_extra()
       |> add_time_lookup()
       |> build_results_list()
@@ -51,9 +51,25 @@ defmodule Plausible.Stats.QueryRunner do
     QueryResult.from(run_results.results_list, site, optimized_query, run_results.meta_extra)
   end
 
-  defp add_comparison_query(%__MODULE__{query: query} = run_results)
+  defp execute_main_query(%__MODULE__{query: query, site: site} = run_results) do
+    {ch_results, time_on_page} = execute_query(query, site)
+
+    struct!(
+      run_results,
+      main_results_list: build_from_ch(ch_results, query, time_on_page),
+      ch_results: ch_results
+    )
+  end
+
+  defp add_comparison_query(
+         %__MODULE__{query: query, main_results_list: main_results_list} = run_results
+       )
        when is_map(query.include.comparisons) do
-    comparison_query = Comparisons.get_comparison_query(query, query.include.comparisons)
+    comparison_query =
+      query
+      |> Comparisons.get_comparison_query(query.include.comparisons)
+      |> Comparisons.add_comparison_filters(main_results_list)
+
     struct!(run_results, comparison_query: comparison_query)
   end
 
@@ -91,16 +107,6 @@ defmodule Plausible.Stats.QueryRunner do
       end
 
     struct!(run_results, time_lookup: time_lookup)
-  end
-
-  defp execute_main_query(%__MODULE__{query: query, site: site} = run_results) do
-    {ch_results, time_on_page} = execute_query(query, site)
-
-    struct!(
-      run_results,
-      main_results_list: build_from_ch(ch_results, query, time_on_page),
-      ch_results: ch_results
-    )
   end
 
   defp add_meta_extra(%__MODULE__{query: query, ch_results: ch_results} = run_results) do
@@ -254,7 +260,18 @@ defmodule Plausible.Stats.QueryRunner do
     Map.get_lazy(comparison_map, dimensions, fn -> empty_metrics(query) end)
   end
 
-  defp empty_metrics(query), do: List.duplicate(0, length(query.metrics))
+  defp empty_metrics(query) do
+    query.metrics
+    |> Enum.map(fn metric -> empty_metric_value(metric) end)
+  end
+
+  on_ee do
+    defp empty_metric_value(metric)
+         when metric in [:total_revenue, :average_revenue],
+         do: nil
+  end
+
+  defp empty_metric_value(_), do: 0
 
   defp total_rows([]), do: 0
   defp total_rows([first_row | _rest]), do: first_row.total_rows
