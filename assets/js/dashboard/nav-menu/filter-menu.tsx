@@ -15,19 +15,7 @@ import {
 import { PlausibleSite, useSiteContext } from '../site-context'
 import { filterRoute } from '../router'
 import { useOnClickOutside } from '../util/use-on-click-outside'
-import { useQuery } from '@tanstack/react-query'
-import { Filter } from '../query'
-import { useQueryContext } from '../query-context'
-
-const SEGMENT_LABEL_KEY_PREFIX = 'segment-'
-
-export function isSegmentIdLabelKey(labelKey: string): boolean {
-  return labelKey.startsWith(SEGMENT_LABEL_KEY_PREFIX)
-}
-
-export function formatSegmentIdAsLabelKey(id: number): string {
-  return `${SEGMENT_LABEL_KEY_PREFIX}${id}`
-}
+import { SegmentsList } from '../segments/segments-dropdown'
 
 export function getFilterListItems({
   propsAvailable
@@ -45,103 +33,6 @@ export function getFilterListItems({
     .map((modalKey) => ({ modalKey, label: formatFilterGroup(modalKey) }))
 }
 
-export const isSegmentFilter = (f: Filter): boolean => f[1] === 'segment'
-
-export const SegmentsList = () => {
-  const { query } = useQueryContext()
-  const site = useSiteContext()
-  const { data } = useQuery({
-    queryKey: ['segments'],
-    placeholderData: (previousData) => previousData,
-    queryFn: async () => {
-      const response = await fetch(
-        `/internal-api/${encodeURIComponent(site.domain)}/segments`,
-        {
-          method: 'GET',
-          headers: { 'content-type': 'application/json' }
-        }
-      ).then((res) => res.json() as Promise<{ name: string; id: number }[]>)
-      return response
-    }
-  })
-
-  const segmentFilter = query.filters.find(isSegmentFilter)
-  const appliedSegmentIds = segmentFilter ? segmentFilter[2] : []
-
-  return (
-    !!data?.length && (
-      <DropdownLinkGroup>
-        {data.map(({ name, id }) => (
-          <DropdownNavigationLink
-            key={id}
-            active={appliedSegmentIds.includes(id)}
-            search={(search) => {
-              const otherFilters = query.filters.filter(
-                (f) => !isSegmentFilter(f)
-              )
-
-              if (appliedSegmentIds.includes(id)) {
-                const updatedSegmentIds = appliedSegmentIds.filter(
-                  (appliedId) => appliedId !== id
-                ) as number[]
-                const updatedLabels = Object.fromEntries(
-                  Object.entries(query.labels).filter(([k, _v]) =>
-                    isSegmentIdLabelKey(k)
-                      ? updatedSegmentIds
-                          .map(formatSegmentIdAsLabelKey)
-                          .includes(formatSegmentIdAsLabelKey(id))
-                      : true
-                  )
-                )
-                if (!updatedSegmentIds.length) {
-                  return {
-                    ...search,
-                    filters: otherFilters,
-                    labels: updatedLabels
-                  }
-                }
-                return {
-                  ...search,
-                  filters: [
-                    ['is', 'segment', updatedSegmentIds],
-                    ...otherFilters
-                  ],
-                  labels: updatedLabels
-                }
-              }
-
-              const updatedSegmentIds = [id, ...appliedSegmentIds] as number[]
-              const updatedFilters = [
-                ['is', 'segment', updatedSegmentIds],
-                ...otherFilters
-              ]
-              const updatedLabels = Object.fromEntries(
-                Object.entries(query.labels)
-                  .concat([[formatSegmentIdAsLabelKey(id), name]])
-                  .filter(([k, _v]) =>
-                    isSegmentIdLabelKey(k)
-                      ? updatedSegmentIds
-                          .map(formatSegmentIdAsLabelKey)
-                          .includes(formatSegmentIdAsLabelKey(id))
-                      : true
-                  )
-              )
-
-              return {
-                ...search,
-                filters: updatedFilters,
-                labels: updatedLabels
-              }
-            }}
-          >
-            {name}
-          </DropdownNavigationLink>
-        ))}
-      </DropdownLinkGroup>
-    )
-  )
-}
-
 export const FilterMenu = () => {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [opened, setOpened] = useState(false)
@@ -153,6 +44,7 @@ export const FilterMenu = () => {
     active: opened,
     handler: () => setOpened(false)
   })
+
   return (
     <ToggleDropdownButton
       ref={dropdownRef}
@@ -172,9 +64,11 @@ export const FilterMenu = () => {
     >
       {opened && (
         <DropdownMenuWrapper id="filter-menu" className="md:left-auto md:w-56">
+          <SegmentsList close={() => setOpened(false)} />
           <DropdownLinkGroup>
             {filterListItems.map(({ modalKey, label }) => (
               <DropdownNavigationLink
+                onClick={() => setOpened(false)}
                 active={false}
                 key={modalKey}
                 path={filterRoute.path}

@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react'
 import * as api from '../api'
 import { useQueryContext } from '../query-context'
-import { formatSegmentIdAsLabelKey, isSegmentFilter } from '../nav-menu/filter-menu'
+import { formatSegmentIdAsLabelKey, isSegmentFilter } from '../segments/segments'
 
 export const FILTER_MODAL_TO_FILTER_GROUP = {
   page: ['page', 'entry_page', 'exit_page'],
@@ -207,13 +207,18 @@ export function formatFilterGroup(filterGroup) {
 export function cleanLabels(filters, labels, mergedFilterKey, mergedLabels) {
   const filteredBy = Object.fromEntries(
     filters
-      .flatMap(([_operation, filterKey, clauses]) =>
-        ['country', 'region', 'city', 'segment'].includes(filterKey)
-          ? clauses
-          : []
-      )
+      .flatMap(([_operation, filterKey, clauses]) => {
+        if (filterKey === 'segment') {
+          return clauses.map(formatSegmentIdAsLabelKey)
+        }
+        if (['country', 'region', 'city'].includes(filterKey)) {
+          return clauses
+        }
+        return []
+      })
       .map((value) => [value, true])
   )
+
   let result = { ...labels }
   for (const value in labels) {
     if (!filteredBy[value]) {

@@ -11,6 +11,8 @@ import {
 } from '../components/dropdown'
 import { FilterPillsList, PILL_X_GAP } from './filter-pills-list'
 import { useQueryContext } from '../query-context'
+import { SaveSegmentAction } from '../segments/segment-actions'
+import { isSegmentFilter } from '../segments/segments'
 
 const SEE_MORE_GAP_PX = 16
 const SEE_MORE_WIDTH_PX = 36
@@ -198,6 +200,12 @@ export const FiltersBar = () => {
             </ToggleDropdownButton>
           )}
         <ClearAction />
+        {!query.filters.some((f) => isSegmentFilter(f)) && (
+          <>
+            <VerticalSeparator />
+            <SaveSegmentAction />
+          </>
+        )}
       </div>
     </div>
   )
@@ -216,3 +224,7 @@ export const ClearAction = () => (
     <XMarkIcon className="w-4 h-4" />
   </AppNavigationLink>
 )
+
+const VerticalSeparator = () => {
+  return <div className="border-gray-300 border-1 border-l h-9"></div>
+}
