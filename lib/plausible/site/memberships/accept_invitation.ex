@@ -31,10 +31,10 @@ defmodule Plausible.Site.Memberships.AcceptInvitation do
              | :transfer_to_self
              | :no_plan}
   def transfer_ownership(site, user) do
-    site = Repo.preload(site, :owner)
+    site = Plausible.Teams.load_for_site(site)
 
-    with :ok <- Invitations.ensure_transfer_valid(site, user, :owner),
-         :ok <- Invitations.ensure_can_take_ownership(site, user) do
+    with :ok <- Plausible.Teams.Invitations.ensure_transfer_valid(site.team, user),
+         :ok <- Plausible.Teams.Invitations.ensure_can_take_ownership(site, user) do
       membership = get_or_create_owner_membership(site, user)
 
       multi = add_and_transfer_ownership(site, membership, user)
@@ -161,18 +161,11 @@ defmodule Plausible.Site.Memberships.AcceptInvitation do
   # to avoid leaving site without an owner!
   defp downgrade_previous_owner(multi, site, new_owner) do
     new_owner_id = new_owner.id
-
-    previous_owner =
-      Repo.one(
-        from(
-          sm in Site.Membership,
-          where: sm.site_id == ^site.id,
-          where: sm.role == :owner
-        )
-      )
+    site = Plausible.Teams.load_for_site(site)
+    previous_owner = Plausible.Teams.Sites.get_owner(site.team)
 
     case previous_owner do
-      %{user_id: ^new_owner_id} ->
+      %{id: ^new_owner_id} ->
         Multi.put(multi, :previous_owner_membership, previous_owner)
 
       nil ->
@@ -184,11 +177,12 @@ defmodule Plausible.Site.Memberships.AcceptInvitation do
         Multi.put(multi, :previous_owner_membership, nil)
 
       previous_owner ->
-        Multi.update(
-          multi,
-          :previous_owner_membership,
-          Site.Membership.set_role(previous_owner, :admin)
-        )
+        query =
+          from sm in Site.Membership,
+            where:
+              sm.user_id == ^previous_owner.id and sm.site_id == ^site.id and sm.role == :owner
+
+        Multi.update_all(multi, :previous_owner_membersip, query, set: [role: :admin])
     end
   end
 

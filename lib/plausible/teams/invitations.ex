@@ -181,9 +181,9 @@ defmodule Plausible.Teams.Invitations do
     end
   end
 
-  defp ensure_transfer_valid(_team, nil), do: :ok
+  def ensure_transfer_valid(_team, nil), do: :ok
 
-  defp ensure_transfer_valid(team, new_owner) do
+  def ensure_transfer_valid(team, new_owner) do
     case Teams.Memberships.team_role(team, new_owner) do
       {:ok, :owner} -> {:error, :transfer_to_self}
       _ -> :ok
@@ -363,7 +363,7 @@ defmodule Plausible.Teams.Invitations do
     |> Plausible.Mailer.send()
   end
 
-  defp ensure_can_take_ownership(site, team) do
+  def ensure_can_take_ownership(site, team) do
     team = Teams.with_subscription(team)
     plan = Billing.Plans.get_subscription_plan(team.subscription)
     active_subscription? = Billing.Subscriptions.active?(team.subscription)

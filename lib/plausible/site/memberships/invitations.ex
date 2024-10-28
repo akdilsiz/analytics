@@ -53,7 +53,9 @@ defmodule Plausible.Site.Memberships.Invitations do
   @spec ensure_transfer_valid(Site.t(), Auth.User.t() | nil, Site.Membership.role()) ::
           :ok | {:error, :transfer_to_self}
   def ensure_transfer_valid(%Site{} = site, %Auth.User{} = new_owner, :owner) do
-    if Plausible.Sites.role(new_owner.id, site) == :owner do
+    {:ok, team} = Plausible.Teams.get_or_create(new_owner)
+
+    if Plausible.Teams.Memberships.team_role(team, site) == :owner do
       {:error, :transfer_to_self}
     else
       :ok

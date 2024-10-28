@@ -179,7 +179,7 @@ defmodule Plausible.Sites do
     with :ok <- Quota.ensure_can_add_new_site(user) do
       Ecto.Multi.new()
       |> Ecto.Multi.put(:site_changeset, Site.new(params))
-      |> Ecto.Multi.run(:create_team, fn _repo, _context ->
+      |> Ecto.Multi.run(:team, fn _repo, _context ->
         Plausible.Teams.get_or_create(user)
       end)
       |> Ecto.Multi.run(:clear_changed_from, fn
@@ -199,7 +199,7 @@ defmodule Plausible.Sites do
         _repo, _context ->
           {:ok, :ignore}
       end)
-      |> Ecto.Multi.insert(:site, fn %{site_changeset: site, create_team: team} ->
+      |> Ecto.Multi.insert(:site, fn %{site_changeset: site, team: team} ->
         Ecto.Changeset.put_assoc(site, :team, team)
       end)
       |> Ecto.Multi.insert(:site_membership, fn %{site: site} ->

@@ -11,12 +11,8 @@ defmodule Plausible.Site.Memberships.AcceptInvitationTest do
 
   describe "transfer_ownership/3" do
     test "transfers ownership successfully" do
-      site = insert(:site, memberships: [])
-
-      existing_owner = insert(:user)
-
-      existing_membership =
-        insert(:site_membership, user: existing_owner, site: site, role: :owner)
+      site_data = create_site()
+      site = site_data.site
 
       new_owner = insert(:user)
       insert(:growth_subscription, user: new_owner)
@@ -28,8 +24,8 @@ defmodule Plausible.Site.Memberships.AcceptInvitationTest do
       assert new_membership.user_id == new_owner.id
       assert new_membership.role == :owner
 
-      existing_membership = Repo.reload!(existing_membership)
-      assert existing_membership.user_id == existing_owner.id
+      existing_membership = Repo.reload!(site_data.site_membership)
+      assert existing_membership.user_id == site_data.user.id
       assert existing_membership.site_id == site.id
       assert existing_membership.role == :admin
 
@@ -38,33 +34,21 @@ defmodule Plausible.Site.Memberships.AcceptInvitationTest do
 
     @tag :teams
     test "syncs ownership transfers provided memberships exist already" do
-      site = insert(:site, memberships: [])
-      existing_owner = insert(:user)
+      site_data = create_site()
+      site = site_data.site
+      existing_owner = site_data.site_membership
+      old_team = site_data.team
 
-      _existing_membership =
-        insert(:site_membership, user: existing_owner, site: site, role: :owner)
+      another_user = create_user()
 
-      {:ok, old_team} = Plausible.Teams.get_or_create(existing_owner)
+      add_guest_membership(site, create_user(), :viewer)
+      another_team_membership = add_guest_membership(site, insert(:user), :viewer)
 
-      another_user = insert(:user)
+      new_owner =
+        create_user()
+        |> subscribe(:growth)
 
-      insert(:site_membership, user: another_user, site: site, role: :viewer)
-
-      another_team_membership =
-        insert(:team_membership, user: another_user, team: old_team, role: :guest)
-
-      _another_guest_membership =
-        insert(:guest_membership,
-          team_membership: another_team_membership,
-          site: site,
-          role: :viewer
-        )
-
-      new_owner = insert(:user)
-      insert(:growth_subscription, user: new_owner)
-
-      assert {:ok, new_membership} =
-               AcceptInvitation.transfer_ownership(site, new_owner)
+      assert {:ok, new_membership} = AcceptInvitation.transfer_ownership(site, new_owner)
 
       assert new_membership.site_id == site.id
       assert new_membership.user_id == new_owner.id
