@@ -407,7 +407,13 @@ defmodule PlausibleWeb.SiteControllerTest do
         })
 
       assert html_response(conn, 200) =~
-               "This domain cannot be registered. Perhaps one of your colleagues registered it?"
+               "This domain cannot be registered. Perhaps one of your colleagues registered it? If that's not the case, please contact support@plausible.io"
+
+      if Plausible.ee?() do
+        assert html_response(conn, 200) =~ "support@plausible.io"
+      else
+        refute html_response(conn, 200) =~ "support@plausible.io"
+      end
     end
 
     test "renders form again when domain was changed from elsewhere", %{conn: conn} do
@@ -425,6 +431,12 @@ defmodule PlausibleWeb.SiteControllerTest do
 
       assert html_response(conn, 200) =~
                "This domain cannot be registered. Perhaps one of your colleagues registered it?"
+
+      if Plausible.ee?() do
+        assert html_response(conn, 200) =~ "support@plausible.io"
+      else
+        refute html_response(conn, 200) =~ "support@plausible.io"
+      end
     end
 
     test "allows creating the site if domain was changed by the owner", %{
